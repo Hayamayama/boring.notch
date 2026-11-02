@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Defaults
 
 struct TabModel: Identifiable {
     let id = UUID()
@@ -16,21 +17,28 @@ struct TabModel: Identifiable {
 
 let tabs = [
     TabModel(label: "Home", icon: "house.fill", view: .home),
-    TabModel(label: "Shelf", icon: "tray.fill", view: .shelf)
+    TabModel(label: "Shelf", icon: "tray.fill", view: .shelf),
+    // The AI tab draws its companion instead of an SF Symbol (see AITabIcon).
+    TabModel(label: "AI Activities", icon: "", view: .ai)
 ]
 
 struct TabSelectionView: View {
     @ObservedObject var coordinator = BoringViewCoordinator.shared
+    @ObservedObject private var aiActivities = AIActivityManager.shared
+    @Default(.boringShelf) private var shelfEnabled
     @Namespace var animation
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(tabs) { tab in
-                    TabButton(label: tab.label, icon: tab.icon, selected: coordinator.currentView == tab.view) {
+            ForEach(tabs.filter { ($0.view != .ai || aiActivities.isEnabled) && ($0.view != .shelf || shelfEnabled) }) { tab in
+                    TabButton(label: tab.label, icon: tab.icon, selected: coordinator.currentView == tab.view,
+                              custom: tab.view == .ai ? AnyView(AITabIcon(selected: coordinator.currentView == .ai)) : nil) {
                         withAnimation(.smooth) {
                             coordinator.currentView = tab.view
                         }
                     }
                     .frame(height: 26)
+                    .help(tab.label)
+                    .accessibilityLabel(Text(tab.label))
                     .foregroundStyle(tab.view == coordinator.currentView ? .white : .gray)
                     .background {
                         if tab.view == coordinator.currentView {
